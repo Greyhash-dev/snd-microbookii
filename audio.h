@@ -2,6 +2,7 @@
 #define AUDIO_H
 
 #include <linux/usb.h>
+#include <linux/vmalloc.h>
 #include <sound/pcm.h>
 
 #define USB_N_URBS 4

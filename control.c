@@ -330,7 +330,7 @@ struct microbookii_message *microbookii_message_alloc(struct microbookii *mbii)
 	}
 
 	if (microbookii_init_message(msg) != 0) {
-		kzfree(msg);
+		kfree_sensitive(msg);
 		return NULL;
 	}
 
@@ -342,7 +342,7 @@ struct microbookii_message *microbookii_message_alloc(struct microbookii *mbii)
 void microbookii_message_free(struct microbookii_message *msg)
 {
 	microbookii_del_message(msg);
-	kzfree(msg);
+	kfree_sensitive(msg);
 }
 
 static int microbookii_control_info(struct snd_kcontrol *kcontrol,
@@ -500,10 +500,15 @@ int microbookii_init_control(struct microbookii *mbii)
 	}
 
 	// Setup a timer to fire every 0.1 seconds to poll the device.
-	ktime = ktime_set(0, MICROBOOKII_POll_MS * NSEC_PER_MSEC);
-	hrtimer_init(&mbii->control.poll_timer, CLOCK_MONOTONIC,
-		     HRTIMER_MODE_REL);
-	mbii->control.poll_timer.function = poll_timer_callback;
+	//ktime = ktime_set(0, MICROBOOKII_POll_MS * NSEC_PER_MSEC);
+	//hrtimer_init(&mbii->control.poll_timer, CLOCK_MONOTONIC,
+	//	     HRTIMER_MODE_REL);
+	//mbii->control.poll_timer.function = poll_timer_callback;
+
+	hrtimer_setup(&mbii->control.poll_timer,
+	      poll_timer_callback,
+	      CLOCK_MONOTONIC,
+	      HRTIMER_MODE_REL);
 	hrtimer_start(&mbii->control.poll_timer, ktime, HRTIMER_MODE_REL);
 
 	return 0;

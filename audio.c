@@ -24,8 +24,47 @@
 #include "control.h"
 #include "microbookii.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
+static int microbookii_pcm_alloc_vmalloc_buffer(
+	struct snd_pcm_substream *substream, size_t size)
+{
+	struct snd_pcm_runtime *runtime = substream->runtime;
+
+	if (runtime->dma_area) {
+		if (runtime->dma_bytes >= size)
+			return 0;
+
+		vfree(runtime->dma_area);
+		runtime->dma_area = NULL;
+	}
+
+	runtime->dma_area = vmalloc(size);
+	if (!runtime->dma_area)
+		return -ENOMEM;
+
+	runtime->dma_bytes = size;
+
+	return 1;
+}
+
+static int microbookii_pcm_free_vmalloc_buffer(
+	struct snd_pcm_substream *substream)
+{
+	struct snd_pcm_runtime *runtime = substream->runtime;
+
+	vfree(runtime->dma_area);
+	runtime->dma_area = NULL;
+	runtime->dma_bytes = 0;
+
+	return 0;
+}
+
+static struct page *microbookii_pcm_get_vmalloc_page(
+	struct snd_pcm_substream *substream, unsigned long offset)
+{
+	return vmalloc_to_page(substream->runtime->dma_area + offset);
+}
 
 static struct snd_pcm_hardware microbookii_pcm_hardware = {
 	.info = SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_MMAP_VALID
@@ -673,13 +712,13 @@ static int microbookii_pcm_hw_params(struct snd_pcm_substream *substream,
 			return err;
 	}
 
-	return snd_pcm_lib_alloc_vmalloc_buffer(substream,
+	return microbookii_pcm_alloc_vmalloc_buffer(substream,
 						params_buffer_bytes(hw_params));
 }
 
 static int microbookii_pcm_hw_free(struct snd_pcm_substream *substream)
 {
-	return snd_pcm_lib_free_vmalloc_buffer(substream);
+	return microbookii_pcm_free_vmalloc_buffer(substream);
 }
 
 static int microbookii_pcm_stream_start(struct microbookii_pcm *pcm,
@@ -894,8 +933,8 @@ static struct snd_pcm_ops microbookii_ops = {
 	.prepare = microbookii_pcm_prepare,
 	.trigger = microbookii_pcm_trigger,
 	.pointer = microbookii_pcm_pointer,
-	.page = snd_pcm_lib_get_vmalloc_page,
-	.mmap = snd_pcm_lib_mmap_vmalloc,
+	.page = microbookii_pcm_get_vmalloc_page,
+	.mmap = snd_pcm_lib_default_mmap,
 };
 
 static int microbookii_pcm_init_urb(struct microbookii_urb *urb,
@@ -1000,7 +1039,7 @@ int microbookii_init_audio(struct microbookii *mbii)
 	pcm->instance->private_data = pcm;
 	pcm->instance->private_free = microbookii_pcm_free;
 
-	strlcpy(pcm->instance->name, DEVICENAME, sizeof(pcm->instance->name));
+	strscpy(pcm->instance->name, DEVICENAME, sizeof(pcm->instance->name));
 
 	memcpy(&pcm->pcm_playback_info, &microbookii_pcm_hardware,
 	       sizeof(microbookii_pcm_hardware));

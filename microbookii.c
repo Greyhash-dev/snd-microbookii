@@ -41,7 +41,7 @@ static DEFINE_MUTEX(devices_mutex);
 DECLARE_BITMAP(devices_used, SNDRV_CARDS);
 static struct usb_driver microbookii_driver;
 
-#ifdef CONFIG_SND_DEBUG
+#ifdef DEBUG
 void microbookii_dump_buffer(const char *prefix, const char *buf, int len)
 {
 	print_hex_dump(KERN_DEBUG, prefix, DUMP_PREFIX_NONE, 16, 1, buf, len,

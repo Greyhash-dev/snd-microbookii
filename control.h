@@ -9,6 +9,7 @@
 #include <linux/completion.h>
 #include <linux/hrtimer.h>
 #include <linux/ktime.h>
+#include <linux/slab.h>
 
 #include <sound/control.h>
 
